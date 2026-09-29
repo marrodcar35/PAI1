@@ -1,25 +1,28 @@
-import hmac
 import hashlib
 import os
-import time
-import uuid
-import json
 import secrets
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
 
-def hash_password(password: str) -> tuple[str, str]:
+def hash_password(password: str, salt: bytes = None) -> tuple[bytes, bytes]:
     """
-    Genera un Salt aleatorio de 16 bytes y deriva el hash de la contraseña
-    usando PBKDF2-HMAC-SHA256 con 100,000 iteraciones (RS1)[cite: 3].
-    Devuelve la pareja (hash_hex, salt_hex) para guardar en la base de datos.
+    Deriva una contraseña usando PBKDF2-HMAC-SHA256.
+    Devuelve la clave derivada y el salt utilizado (Requisito RS1).
     """
-    salt = os.urandom(16)
-    key = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iter=100000,
+    if salt is None:
+        salt = os.urandom(16) # Genera un salt aleatorio único de 16 bytes
+    
+    # Derivación robusta de la clave
+    key = hashlib.pbkdf2_hmac(
+        'sha256', 
+        password.encode('utf-8'), 
+        salt, 
+        100000 # Número de iteraciones (mitiga ataques de fuerza bruta)
     )
-    key_hash = key.derive(password.encode('utf-8'))
-    return key_hash.hex(), salt.hex()
+    return key, salt
+
+def verify_password(stored_key: bytes, stored_salt: bytes, provided_password: str) -> bool:
+    """
+    Verifica si la contraseña proporcionada coincide con la guardada usando tiempo constante.
+    """
+    key, _ = hash_password(provided_password, stored_salt)
+    # Requisito RS4: Comparación en tiempo constante para mitigar Timing Attacks
+    return secrets.compare_digest(stored_key, key)
