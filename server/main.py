@@ -48,7 +48,11 @@ def login(request: LoginRequest):
         is_valid = verify_password(user['password_hash'], user['salt'], request.password)
         
         if not is_valid:
-            new_attempts = user['failed_attempts'] + 1
+            if user['lockout_until'] > 0 and user['lockout_until'] <= current_time:
+                new_attempts = 1
+            else:
+                new_attempts = user['failed_attempts'] + 1
+                
             lockout_time = current_time + LOCKOUT_TIME_SECONDS if new_attempts >= MAX_FAILED_ATTEMPTS else 0
 
             cursor.execute(
