@@ -1,8 +1,9 @@
 import sqlite3
-import os
 from crypto import hash_password
 
 DB_FILE = 'secbank.db'
+MAX_FAILED_ATTEMPTS = 3
+LOCKOUT_TIME_SECONDS = 10
 
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
@@ -20,7 +21,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash BLOB NOT NULL,
-            salt BLOB NOT NULL
+            salt BLOB NOT NULL,
+            failed_attempts INTEGER DEFAULT 0,
+            lockout_until INTEGER DEFAULT 0
         )
     ''')
 
