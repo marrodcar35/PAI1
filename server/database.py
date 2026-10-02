@@ -47,6 +47,16 @@ def init_db():
         conn.commit()
     else:
         print("La base de datos ya está inicializada.")
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS sessions (
+            session_token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            mac_key TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
 
     conn.close()
 
