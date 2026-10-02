@@ -1,6 +1,7 @@
 import hashlib
 import os
 import secrets
+import hmac
 
 def hash_password(password: str, salt: bytes = None) -> tuple[bytes, bytes]:
     """
@@ -26,3 +27,13 @@ def verify_password(stored_key: bytes, stored_salt: bytes, provided_password: st
     key, _ = hash_password(provided_password, stored_salt)
     # Requisito RS4: Comparación en tiempo constante para mitigar Timing Attacks
     return secrets.compare_digest(stored_key, key)
+
+def generate_key() -> bytes:
+    return os.urandom(32)
+
+def generate_hmac(secret_key: bytes, message: str) -> str:
+    return hmac.new(secret_key, message.encode('utf-8'), hashlib.sha256).hexdigest()
+
+def verify_hmac(secret_key: bytes, message: str, signature: str) -> bool:
+    expected_signature = generate_hmac(secret_key, message)
+    return secrets.compare_digest(expected_signature, signature)
