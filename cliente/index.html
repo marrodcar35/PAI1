@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>SecBank - Frontend Seguro</title>
+    <!-- Cargamos CryptoJS para poder hacer el HMAC-SHA256 en el navegador -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto 20px; }
+        input, button { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+        button { background-color: #28a745; color: white; border: none; cursor: pointer; font-weight: bold;}
+        button:hover { background-color: #218838; }
+        #transfer-section, #logs { display: none; }
+        .log-box { background: #333; color: #0f0; padding: 10px; font-family: monospace; font-size: 12px; border-radius: 4px; overflow-x: auto;}
+    </style>
+</head>
+<body>
+
+    <h2 style="text-align: center;">🏦 SecBank</h2>
+
+    <!-- SECCIÓN DE LOGIN -->
+    <div class="card" id="login-section">
+        <h3>Iniciar Sesión</h3>
+        <input type="text" id="username" placeholder="Usuario" value="usuario1">
+        <input type="password" id="password" placeholder="Contraseña" value="123456">
+        <button onclick="hacerLogin()">Entrar</button>
+    </div>
+
+    <!-- SECCIÓN DE TRANSFERENCIA (Oculta hasta hacer login) -->
+    <div class="card" id="transfer-section">
+        <h3>Enviar Dinero</h3>
+        <p>Cuenta Origen: <strong>ES12345678</strong></p>
+        <input type="text" id="destino" placeholder="Cuenta Destino (ej: ES87654321)">
+        <input type="number" id="cantidad" placeholder="Cantidad (€)">
+        <button onclick="hacerTransferencia()">Realizar Transferencia Segura</button>
+    </div>
+
+    <!-- CONSOLA PARA VER LA MAGIA INVISIBLE -->
+    <div class="card" id="logs" style="max-width: 600px;">
+        <h3>Datos en tránsito (Invisible para el usuario)</h3>
+        <div id="logContent" class="log-box"></div>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8080/api/v1";
+
+        // 1. FUNCIÓN DE LOGIN
+        async function hacerLogin() {
+            const user = document.getElementById("username").value;
+            const pass = document.getElementById("password").value;
+
+            const response = await fetch(`${API_URL}/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // El navegador guarda las claves en su memoria interna temporal
+                sessionStorage.setItem("session_token", data.session_token);
+                sessionStorage.setItem("mac_key", data.mac_key);
+                
+                alert("Login correcto. Bienvenido.");
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("transfer-section").style.display = "block";
+                document.getElementById("logs").style.display = "block";
+            } else {
+                alert("Error: " + data.detail);
+            }
+        }
+
+        // 2. FUNCIÓN DE TRANSFERENCIA (Aquí ocurre la magia de seguridad)
+        async function hacerTransferencia() {
+            // Recuperamos los datos del formulario y generamos los automáticos
+            const origen = "ES12345678";
+            const destino = document.getElementById("destino").value;
+            const cantidad = parseFloat(document.getElementById("cantidad").value);
+            const moneda = "EUR";
+            const txId = "tx-" + Math.floor(Math.random() * 1000000); // Generamos un ID aleatorio
+            const timestamp = Math.floor(Date.now() / 1000);
+
+            // --- CORRECCIÓN: Ajuste de formato para coincidir con Python ---
+            let strCantidad = cantidad.toString();
+            if (!strCantidad.includes(".")) {
+                strCantidad += ".0";
+            }
+
+            // Recuperamos las claves de la memoria del navegador
+            const sessionToken = sessionStorage.getItem("session_token");
+            const macKeyHex = sessionStorage.getItem("mac_key");
+
+            // A) CONCATENAMOS: Usando strCantidad para que cuadre exactamente
+            const mensaje = `${txId}${origen}${destino}${strCantidad}${moneda}${timestamp}`;
+
+            // B) CALCULAMOS EL MAC: Usamos CryptoJS
+            const macKeyBytes = CryptoJS.enc.Hex.parse(macKeyHex);
+            const macGenerado = CryptoJS.HmacSHA256(mensaje, macKeyBytes).toString();
+
+            // Mostramos en la cajita negra lo que vamos a enviar por red
+            document.getElementById("logContent").innerHTML = `
+                <b>Token de sesión:</b> ${sessionToken.substring(0,20)}...<br>
+                <b>Mensaje plano:</b> ${mensaje}<br>
+                <b>MAC Calculado:</b> <span style="color:green;">${macGenerado}</span>
+            `;
+
+            // C) ENVIAMOS LA PETICIÓN AL SERVIDOR
+            const payload = {
+                session_token: sessionToken,
+                tx_id: txId,
+                origin_account: origen,
+                destination_account: destino,
+                amount: cantidad, // Aquí mandamos el número real sin modificar
+                currency: moneda,
+                timestamp: timestamp,
+                mac: macGenerado
+            };
+            /*
+            // 🛑 --- INICIO DEL ATAQUE SIMULADO --- 🛑
+            // El atacante intercepta el payload modificado en tránsito
+            // Cambia el destinatario y te vacía la cuenta, pero deja intacto el MAC original
+            payload.destination_account = "ES_CUENTA_HACKER_99";
+            payload.amount = 99999.0;
+            // 🛑 --- FIN DEL ATAQUE --- 🛑
+            */
+            const response = await fetch(`${API_URL}/transfer`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert("✅ ¡ÉXITO! " + result.message);
+            } else {
+                alert("❌ ERROR: " + result.detail);
+            }
+        }
+    </script>
+</body>
+</html>
