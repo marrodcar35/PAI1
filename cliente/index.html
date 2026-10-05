@@ -25,6 +25,7 @@
         <input type="text" id="username" placeholder="Usuario" value="usuario1">
         <input type="password" id="password" placeholder="Contraseña" value="123456">
         <button onclick="hacerLogin()">Entrar</button>
+        <button onclick="hacerRegistro()" style="background-color: #007bff; margin-top: 5px;">Registrarse</button>
     </div>
 
     <!-- SECCIÓN DE TRANSFERENCIA (Oculta hasta hacer login) -->
@@ -34,6 +35,7 @@
         <input type="text" id="destino" placeholder="Cuenta Destino (ej: ES87654321)">
         <input type="number" id="cantidad" placeholder="Cantidad (€)">
         <button onclick="hacerTransferencia()">Realizar Transferencia Segura</button>
+        <button onclick="hacerLogout()" style="background-color: #dc3545; margin-top: 20px;">Cerrar Sesión</button>
     </div>
 
     <!-- CONSOLA PARA VER LA MAGIA INVISIBLE -->
@@ -72,7 +74,75 @@
             }
         }
 
-        // 2. FUNCIÓN DE TRANSFERENCIA (Aquí ocurre la magia de seguridad)
+        // 2. FUNCIÓN DE LOGOUT
+        async function hacerLogout() {
+            const sessionToken = sessionStorage.getItem("session_token");
+    
+            if (!sessionToken) {
+                alert("No hay una sesión activa.");
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/logout`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_token: sessionToken })
+            });
+
+            if (response.ok) {
+                // Borramos las claves de la memoria del navegador
+                sessionStorage.removeItem("session_token");
+                sessionStorage.removeItem("mac_key");
+        
+                alert("Sesión cerrada con éxito.");
+        
+                // Restauramos la vista al menú de login
+                document.getElementById("transfer-section").style.display = "none";
+                document.getElementById("logs").style.display = "none";
+                document.getElementById("login-section").style.display = "block";
+                document.getElementById("password").value = ""; // Limpiamos la contraseña
+            } else {
+                const result = await response.json();
+                alert("Error al cerrar sesión: " + result.detail);
+            }
+        }
+        
+
+        // FUNCIÓN DE REGISTRO
+        async function hacerRegistro() {
+            const user = document.getElementById("username").value;
+            const pass = document.getElementById("password").value;
+
+            // Evitar envíos vacíos
+            if (!user || !pass) {
+                alert("Por favor, introduce un usuario y una contraseña.");
+                return;
+            }
+
+            // Validación de política de contraseñas en el frontend
+            const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$\%^&*(),.?":{}\vert{}<>]).{8,}$/;
+            if (!regex.test(pass)) {
+                alert("La contraseña debe tener al menos 8 caracteres, 1 letra, 1 número y 1 símbolo.");
+                return;
+            }
+
+            // Petición al servidor
+            const response = await fetch(`${API_URL}/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert("✅ " + data.message + ". Ahora puedes iniciar sesión.");
+            } else {
+                alert("❌ Error: " + data.detail);
+            }
+        }
+
+        // 3. FUNCIÓN DE TRANSFERENCIA (Aquí ocurre la magia de seguridad)
         async function hacerTransferencia() {
             // Recuperamos los datos del formulario y generamos los automáticos
             const origen = "ES12345678";

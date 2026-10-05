@@ -23,7 +23,15 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
-# 2. Definimos la estructura de la Transacción según el documento
+# 1. Definimos la estructura esperada para el Logout
+class LogoutRequest(BaseModel):
+    session_token: str
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+# 3. Definimos la estructura de la Transacción según el documento
 class TransferRequest(BaseModel):
     session_token: str
     tx_id: str
@@ -102,6 +110,62 @@ def login(request: LoginRequest):
 
     finally:
         conn.close()
+
+@app.post("/api/v1/logout")
+def logout(request: LogoutRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Verificamos si la sesión existe
+        cursor.execute("SELECT * FROM sessions WHERE session_token = ?", (request.session_token,))
+        session = cursor.fetchone()
+        
+        if not session:
+            raise HTTPException(status_code=401, detail="Sesión inválida o ya cerrada")
+            
+        # Eliminamos la sesión de la base de datos para invalidarla
+        cursor.execute("DELETE FROM sessions WHERE session_token = ?", (request.session_token,))
+        conn.commit()
+        
+        return {"message": "Sesión cerrada correctamente"}
+    finally:
+        conn.close()
+
+@app.post("/api/v1/register")
+def register(request: RegisterRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # 1. Validar la política de contraseñas
+        # Mínimo 8 caracteres, 1 letra, 1 número, 1 símbolo
+        patron = r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*(),.?\":{}|<>])[A-Za-z\d!@#$%^&*(),.?\":{}|<>]{8,}$"
+        
+        if not re.match(patron, request.password):
+            raise HTTPException(
+                status_code=400, 
+                detail="La contraseña debe tener al menos 8 caracteres, incluir 1 letra, 1 número y 1 símbolo."
+            )
+
+        # 2. Comprobar si el usuario ya existe (Evitar duplicados)
+        cursor.execute("SELECT * FROM users WHERE username = ?", (request.username,))
+        if cursor.fetchone():
+            raise HTTPException(status_code=400, detail="El usuario ya existe. Elige otro nombre.")
+
+        # 3. Derivación robusta (Requisito RS1)
+        key, salt = hash_password(request.password)
+
+        # 4. Guardar usuario en la base de datos
+        cursor.execute(
+            "INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)",
+            (request.username, key, salt)
+        )
+        conn.commit()
+        
+        return {"message": f"Usuario '{request.username}' registrado correctamente"}
+    finally:
+        conn.close()
+
+
 
     # -----------------------------------------
 # ENDPOINT DE TRANSFERENCIA
