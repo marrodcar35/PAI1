@@ -22,10 +22,10 @@
     <!-- SECCIÓN DE LOGIN -->
     <div class="card" id="login-section">
         <h3>Iniciar Sesión</h3>
-        <input type="text" id="username" placeholder="Usuario" value="usuario1">
-        <input type="password" id="password" placeholder="Contraseña" value="123456">
-        <button onclick="hacerLogin()">Entrar</button>
-        <button onclick="hacerRegistro()" style="background-color: #007bff; margin-top: 5px;">Registrarse</button>
+        <input type="text" id="username" placeholder="Usuario">
+        <input type="password" id="password" placeholder="Contraseña">
+        <button type = "button" onclick="hacerLogin()">Entrar</button>
+        <button type = "button" onclick="hacerRegistro()" style="background-color: #007bff; margin-top: 5px;">Registrarse</button>
     </div>
 
     <!-- SECCIÓN DE TRANSFERENCIA (Oculta hasta hacer login) -->
@@ -34,8 +34,8 @@
         <p>Cuenta Origen: <strong>ES12345678</strong></p>
         <input type="text" id="destino" placeholder="Cuenta Destino (ej: ES87654321)">
         <input type="number" id="cantidad" placeholder="Cantidad (€)">
-        <button onclick="hacerTransferencia()">Realizar Transferencia Segura</button>
-        <button onclick="hacerLogout()" style="background-color: #dc3545; margin-top: 20px;">Cerrar Sesión</button>
+        <button type = "button" onclick="hacerTransferencia()">Realizar Transferencia Segura</button>
+        <button type = "button" onclick="hacerLogout()" style="background-color: #dc3545; margin-top: 20px;">Cerrar Sesión</button>
     </div>
 
     <!-- CONSOLA PARA VER LA MAGIA INVISIBLE -->
@@ -45,7 +45,7 @@
     </div>
 
     <script>
-        const API_URL = "http://127.0.0.1:8080/api/v1";
+        const API_URL = "/api/v1";
 
         // 1. FUNCIÓN DE LOGIN
         async function hacerLogin() {

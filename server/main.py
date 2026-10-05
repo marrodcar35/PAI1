@@ -1,6 +1,8 @@
 import time
 import os
+import re
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware #
 from pydantic import BaseModel
 import uvicorn
@@ -41,6 +43,14 @@ class TransferRequest(BaseModel):
     currency: str
     timestamp: int
     mac: str
+
+@app.get("/")
+def serve_frontend():
+    # Buscamos la ruta de tu index.html que está en la carpeta 'cliente'
+    ruta_actual = os.path.dirname(os.path.abspath(__file__))
+    ruta_index = os.path.join(ruta_actual, "..", "cliente", "index.html")
+    
+    return FileResponse(ruta_index)
 
 # 3. Endpoint de Inicio de Sesión
 @app.post("/api/v1/login")

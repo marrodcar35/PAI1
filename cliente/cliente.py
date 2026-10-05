@@ -2,6 +2,11 @@ import os
 import sys  
 import requests
 import time
+
+ruta_actual = os.path.dirname(os.path.abspath(__file__))
+ruta_raiz = os.path.dirname(ruta_actual)
+if ruta_raiz not in sys.path:
+    sys.path.insert(0, ruta_raiz)
 from server.crypto import generate_hmac_sha256
 
 BASE_URL = "http://127.0.0.1:8080/api/v1"
