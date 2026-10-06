@@ -42,6 +42,7 @@ class TransferRequest(BaseModel):
     amount: float
     currency: str
     timestamp: int
+    nonce: str
     mac: str
 
 @app.get("/")
@@ -187,6 +188,15 @@ def transfer(request: TransferRequest):
     current_time = int(time.time())
     
     try:
+        #  Validar ventana de tiempo (rechazamos peticiones con más de 5 minutos de antigüedad)
+        if abs(current_time - request.timestamp) > 300:
+            raise HTTPException(status_code=403, detail="Timestamp caducado. Posible ataque Replay.")
+            
+        #  Validar que el Nonce no haya sido utilizado antes
+        cursor.execute("SELECT * FROM nonces WHERE nonce = ?", (request.nonce,))
+        if cursor.fetchone():
+            raise HTTPException(status_code=403, detail="Nonce ya utilizado. Ataque Replay detectado.")
+
         # 1. Buscamos la sesión del usuario en la base de datos
         cursor.execute("SELECT * FROM sessions WHERE session_token = ?", (request.session_token,))
         session = cursor.fetchone()
