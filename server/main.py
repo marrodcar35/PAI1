@@ -188,31 +188,25 @@ def transfer(request: TransferRequest):
     current_time = int(time.time())
     
     try:
-        #  Validar ventana de tiempo (rechazamos peticiones con más de 5 minutos de antigüedad)
-        if abs(current_time - request.timestamp) > 300:
-            raise HTTPException(status_code=403, detail="Timestamp caducado. Posible ataque Replay.")
-            
-        #  Validar que el Nonce no haya sido utilizado antes
+        # 1. Comprobar si el Nonce ya existe en la base de datos (Evitar Replay)
         cursor.execute("SELECT * FROM nonces WHERE nonce = ?", (request.nonce,))
         if cursor.fetchone():
             raise HTTPException(status_code=403, detail="Nonce ya utilizado. Ataque Replay detectado.")
 
-        # 1. Buscamos la sesión del usuario en la base de datos
+        # 2. Buscamos la sesión del usuario
         cursor.execute("SELECT * FROM sessions WHERE session_token = ?", (request.session_token,))
         session = cursor.fetchone()
         
-        # Si la sesión no existe o ha caducado
         if not session or session['expires_at'] < current_time:
             raise HTTPException(status_code=401, detail="Sesión inválida o caducada")
             
-        # 2. Recuperamos la clave MAC secreta que le asignamos en su login
-        # Como está en hexadecimal, la pasamos a bytes
+        # 3. Recuperamos la clave MAC secreta
         mac_key = bytes.fromhex(session['mac_key'])
         
-        # 3. Concatenamos los datos para validarlos
-        message = f"{request.tx_id}{request.origin_account}{request.destination_account}{request.amount}{request.currency}{request.timestamp}"
+        # 4. Concatenamos los datos añadiendo el NONCE al final
+        message = f"{request.tx_id}{request.origin_account}{request.destination_account}{request.amount}{request.currency}{request.timestamp}{request.nonce}"
         
-        # 4. Verificamos la firma MAC usando LA CLAVE DE SU SESIÓN
+        # 5. Verificamos la firma MAC
         is_valid_mac = verify_hmac_sha256(mac_key, message, request.mac)
         
         if not is_valid_mac:
@@ -221,11 +215,13 @@ def transfer(request: TransferRequest):
                 detail="Firma MAC inválida. La transacción ha sido alterada o no es auténtica."
             )
         
-        # Aquí iría tu lógica de inserción de transferencia
+        # 6. Guardar el Nonce usado en la base de datos para bloquear futuros reintentos
+        cursor.execute("INSERT INTO nonces (nonce, timestamp) VALUES (?, ?)", (request.nonce, current_time))
+        conn.commit()
         
         return {
             "status": "success", 
-            "message": "Firma MAC validada correctamente con clave de sesión", 
+            "message": "Firma MAC validada y Nonce registrado correctamente", 
             "tx_id": request.tx_id
         }
     finally:
