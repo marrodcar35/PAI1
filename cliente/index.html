@@ -141,7 +141,13 @@
                 alert("❌ Error: " + data.detail);
             }
         }
-
+        // Función para generar un Nonce único 
+        function generateNonce() {
+            return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
         // 3. FUNCIÓN DE TRANSFERENCIA (Aquí ocurre la magia de seguridad)
         async function hacerTransferencia() {
             // Recuperamos los datos del formulario y generamos los automáticos
@@ -151,6 +157,7 @@
             const moneda = "EUR";
             const txId = "tx-" + Math.floor(Math.random() * 1000000); // Generamos un ID aleatorio
             const timestamp = Math.floor(Date.now() / 1000);
+            const nonce = generateNonce();
 
             // --- CORRECCIÓN: Ajuste de formato para coincidir con Python ---
             let strCantidad = cantidad.toString();
@@ -163,7 +170,7 @@
             const macKeyHex = sessionStorage.getItem("mac_key");
 
             // A) CONCATENAMOS: Usando strCantidad para que cuadre exactamente
-            const mensaje = `${txId}${origen}${destino}${strCantidad}${moneda}${timestamp}`;
+            const mensaje = `${txId}${origen}${destino}${strCantidad}${moneda}${timestamp}${nonce}`;
 
             // B) CALCULAMOS EL MAC: Usamos CryptoJS
             const macKeyBytes = CryptoJS.enc.Hex.parse(macKeyHex);
@@ -171,7 +178,7 @@
 
             // Mostramos en la cajita negra lo que vamos a enviar por red
             document.getElementById("logContent").innerHTML = `
-                <b>Token de sesión:</b> ${sessionToken.substring(0,20)}...<br>
+                <b>Nonce:</b> ${nonce}<br>
                 <b>Mensaje plano:</b> ${mensaje}<br>
                 <b>MAC Calculado:</b> <span style="color:green;">${macGenerado}</span>
             `;
@@ -185,6 +192,7 @@
                 amount: cantidad, // Aquí mandamos el número real sin modificar
                 currency: moneda,
                 timestamp: timestamp,
+                nonce: nonce,
                 mac: macGenerado
             };
             /*
