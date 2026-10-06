@@ -136,9 +136,9 @@
             const data = await response.json();
 
             if (response.ok) {
-                alert("✅ " + data.message + ". Ahora puedes iniciar sesión.");
+                alert(data.message + ". Ahora puedes iniciar sesión.");
             } else {
-                alert("❌ Error: " + data.detail);
+                alert("Error: " + data.detail);
             }
         }
         // Función para generar un Nonce único 
@@ -196,12 +196,12 @@
                 mac: macGenerado
             };
             /*
-            // 🛑 --- INICIO DEL ATAQUE SIMULADO --- 🛑
+            // --- INICIO DEL ATAQUE SIMULADO --- 
             // El atacante intercepta el payload modificado en tránsito
             // Cambia el destinatario y te vacía la cuenta, pero deja intacto el MAC original
             payload.destination_account = "ES_CUENTA_HACKER_99";
             payload.amount = 99999.0;
-            // 🛑 --- FIN DEL ATAQUE --- 🛑
+            // --- FIN DEL ATAQUE --- 
             */
             const response = await fetch(`${API_URL}/transfer`, {
                 method: "POST",
@@ -212,9 +212,9 @@
             const result = await response.json();
 
             if (response.ok) {
-                alert("✅ ¡ÉXITO! " + result.message);
+                alert("¡ÉXITO! " + result.message);
             } else {
-                alert("❌ ERROR: " + result.detail);
+                alert("ERROR: " + result.detail);
             }
         }
     </script>

@@ -178,7 +178,7 @@ def register(request: RegisterRequest):
 
 
 
-    # -----------------------------------------
+# -----------------------------------------
 # ENDPOINT DE TRANSFERENCIA
 # -----------------------------------------
 @app.post("/api/v1/transfer")

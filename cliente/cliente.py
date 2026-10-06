@@ -24,7 +24,7 @@ login_result = login_response.json()
 print(f"Respuesta del servidor: {login_result}")
 
 if login_response.status_code != 200:
-    print("❌ Error en el login. Abortando.")
+    print("Error en el login. Abortando.")
     exit()
 
 session_token = login_result["session_token"]
