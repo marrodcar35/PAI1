@@ -2,11 +2,11 @@ import hashlib
 import os
 import hmac
 
+"""
+RS1(a):Devuelve la clave derivada y el salt utilizado
+Deriva una contraseña usando PBKDF2-HMAC-SHA256. 
+"""
 def hash_password(password: str, salt: bytes = None) -> tuple[bytes, bytes]:
-    """
-    Deriva una contraseña usando PBKDF2-HMAC-SHA256.
-    Devuelve la clave derivada y el salt utilizado (Requisito RS1).
-    """
     if salt is None:
         salt = os.urandom(16) # Genera un salt aleatorio único de 16 bytes
     
@@ -15,16 +15,14 @@ def hash_password(password: str, salt: bytes = None) -> tuple[bytes, bytes]:
         'sha256', 
         password.encode('utf-8'), 
         salt, 
-        100000 # Número de iteraciones (mitiga ataques de fuerza bruta)
+        100000 # Número de iteraciones (RS1(b))
     )
     return key, salt
 
+#RS4: Verifica si la contraseña proporcionada coincide con la guardada usando tiempo constante.
 def verify_password(stored_key: bytes, stored_salt: bytes, provided_password: str) -> bool:
-    """
-    Verifica si la contraseña proporcionada coincide con la guardada usando tiempo constante.
-    """
     key, _ = hash_password(provided_password, stored_salt)
-    # Requisito RS4: Comparación en tiempo constante para mitigar Timing Attacks
+    #RS4
     return hmac.compare_digest(stored_key, key)
 
 def generate_mac_key() -> bytes:
