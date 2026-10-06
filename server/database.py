@@ -38,8 +38,8 @@ def init_db():
     # Población de datos: Usuario de prueba
     cursor.execute('SELECT * FROM users WHERE username = ?', ('usuario1',))
     if cursor.fetchone() is None:
-        print("Creando usuario de prueba: 'usuario1' con contraseña '123456'")
-        key, salt = hash_password('123456')
+        print("Creando usuario de prueba: 'usuario1' con contraseña 'Usuario1@'")
+        key, salt = hash_password('Usuario1@')
         cursor.execute(
             'INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)',
             ('usuario1', key, salt)

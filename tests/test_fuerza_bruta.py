@@ -4,7 +4,7 @@ import time
 BASE_URL = "http://127.0.0.1:8080/api/v1"
 USERNAME = "usuario1"
 WRONG_PASSWORD = "password_incorrecta"
-RIGHT_PASSWORD = "123456"
+RIGHT_PASSWORD = "Usuario1@"
 
 print("Simulando ataque de fuerza bruta...\n")
 

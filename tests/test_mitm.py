@@ -7,7 +7,7 @@ BASE_URL = "http://127.0.0.1:8080/api/v1"
 
 # 1. Hacemos login para obtener una sesión válida
 print("1. Iniciando sesión legítima...")
-login_res = requests.post(f"{BASE_URL}/login", json={"username": "usuario1", "password": "123456"})
+login_res = requests.post(f"{BASE_URL}/login", json={"username": "usuario1", "password": "Usuario1@"})
 if login_res.status_code != 200:
     print("Error en login. Asegúrate de que el servidor está encendido.")
     exit()
