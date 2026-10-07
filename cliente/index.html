@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>SecBank - Frontend Seguro</title>
-    <!-- Cargamos CryptoJS para poder hacer el HMAC-SHA256 en el navegador -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px; }
@@ -17,9 +16,8 @@
 </head>
 <body>
 
-    <h2 style="text-align: center;">🏦 SecBank</h2>
+    <h2 style="text-align: center;">SecBank</h2>
 
-    <!-- SECCIÓN DE LOGIN -->
     <div class="card" id="login-section">
         <h3>Iniciar Sesión</h3>
         <input type="text" id="username" placeholder="Usuario">
@@ -28,7 +26,6 @@
         <button type = "button" onclick="hacerRegistro()" style="background-color: #007bff; margin-top: 5px;">Registrarse</button>
     </div>
 
-    <!-- SECCIÓN DE TRANSFERENCIA (Oculta hasta hacer login) -->
     <div class="card" id="transfer-section">
         <h3>Enviar Dinero</h3>
         <p>Cuenta Origen: <strong>ES12345678</strong></p>
@@ -47,7 +44,6 @@
     <script>
         const API_URL = "/api/v1";
 
-        // 1. FUNCIÓN DE LOGIN
         async function hacerLogin() {
             const user = document.getElementById("username").value;
             const pass = document.getElementById("password").value;
@@ -74,7 +70,6 @@
             }
         }
 
-        // 2. FUNCIÓN DE LOGOUT
         async function hacerLogout() {
             const sessionToken = sessionStorage.getItem("session_token");
     
@@ -100,7 +95,7 @@
                 document.getElementById("transfer-section").style.display = "none";
                 document.getElementById("logs").style.display = "none";
                 document.getElementById("login-section").style.display = "block";
-                document.getElementById("password").value = ""; // Limpiamos la contraseña
+                document.getElementById("password").value = "";
             } else {
                 const result = await response.json();
                 alert("Error al cerrar sesión: " + result.detail);
@@ -108,7 +103,7 @@
         }
         
 
-        // FUNCIÓN DE REGISTRO
+
         async function hacerRegistro() {
             const user = document.getElementById("username").value;
             const pass = document.getElementById("password").value;
@@ -136,9 +131,9 @@
             const data = await response.json();
 
             if (response.ok) {
-                alert("✅ " + data.message + ". Ahora puedes iniciar sesión.");
+                alert(data.message + ". Ahora puedes iniciar sesión.");
             } else {
-                alert("❌ Error: " + data.detail);
+                alert("Error: " + data.detail);
             }
         }
         // Función para generar un Nonce único 
@@ -148,7 +143,6 @@
                 return v.toString(16);
             });
         }
-        // 3. FUNCIÓN DE TRANSFERENCIA (Aquí ocurre la magia de seguridad)
         async function hacerTransferencia() {
             // Recuperamos los datos del formulario y generamos los automáticos
             const origen = "ES12345678";
@@ -159,31 +153,28 @@
             const timestamp = Math.floor(Date.now() / 1000);
             const nonce = generateNonce();
 
-            // --- CORRECCIÓN: Ajuste de formato para coincidir con Python ---
+
             let strCantidad = cantidad.toString();
             if (!strCantidad.includes(".")) {
                 strCantidad += ".0";
             }
 
-            // Recuperamos las claves de la memoria del navegador
             const sessionToken = sessionStorage.getItem("session_token");
             const macKeyHex = sessionStorage.getItem("mac_key");
 
-            // A) CONCATENAMOS: Usando strCantidad para que cuadre exactamente
+
             const mensaje = `${txId}${origen}${destino}${strCantidad}${moneda}${timestamp}${nonce}`;
 
-            // B) CALCULAMOS EL MAC: Usamos CryptoJS
+
             const macKeyBytes = CryptoJS.enc.Hex.parse(macKeyHex);
             const macGenerado = CryptoJS.HmacSHA256(mensaje, macKeyBytes).toString();
 
-            // Mostramos en la cajita negra lo que vamos a enviar por red
             document.getElementById("logContent").innerHTML = `
                 <b>Nonce:</b> ${nonce}<br>
                 <b>Mensaje plano:</b> ${mensaje}<br>
                 <b>MAC Calculado:</b> <span style="color:green;">${macGenerado}</span>
             `;
 
-            // C) ENVIAMOS LA PETICIÓN AL SERVIDOR
             const payload = {
                 session_token: sessionToken,
                 tx_id: txId,
@@ -195,14 +186,6 @@
                 nonce: nonce,
                 mac: macGenerado
             };
-            /*
-            // 🛑 --- INICIO DEL ATAQUE SIMULADO --- 🛑
-            // El atacante intercepta el payload modificado en tránsito
-            // Cambia el destinatario y te vacía la cuenta, pero deja intacto el MAC original
-            payload.destination_account = "ES_CUENTA_HACKER_99";
-            payload.amount = 99999.0;
-            // 🛑 --- FIN DEL ATAQUE --- 🛑
-            */
             const response = await fetch(`${API_URL}/transfer`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -212,9 +195,9 @@
             const result = await response.json();
 
             if (response.ok) {
-                alert("✅ ¡ÉXITO! " + result.message);
+                alert("¡ÉXITO! " + result.message);
             } else {
-                alert("❌ ERROR: " + result.detail);
+                alert("ERROR: " + result.detail);
             }
         }
     </script>

@@ -7,7 +7,7 @@ LOCKOUT_TIME_SECONDS = 10
 
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row # Permite acceder a las columnas por nombre
+    conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
@@ -15,7 +15,7 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Tabla de Usuarios
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +27,7 @@ def init_db():
         )
     ''')
 
-    # Tabla de Nonces (Para prevenir ataques de Replay - RS3)
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS nonces (
             nonce TEXT PRIMARY KEY,
@@ -35,7 +35,6 @@ def init_db():
         )
     ''')
 
-    # Población de datos: Usuario de prueba
     cursor.execute('SELECT * FROM users WHERE username = ?', ('usuario1',))
     if cursor.fetchone() is None:
         print("Creando usuario de prueba: 'usuario1' con contraseña 'Usuario1@'")
@@ -60,6 +59,6 @@ def init_db():
 
     conn.close()
 
-# Si ejecutamos este archivo directamente, se inicializará la base de datos
+
 if __name__ == '__main__':
     init_db()

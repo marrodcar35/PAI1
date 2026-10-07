@@ -20,12 +20,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 1. Definimos la estructura esperada para el Login
+# Definimos la estructura esperada para el Login
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-# 1. Definimos la estructura esperada para el Logout
+# Definimos la estructura esperada para el Logout
 class LogoutRequest(BaseModel):
     session_token: str
 
@@ -33,7 +33,7 @@ class RegisterRequest(BaseModel):
     username: str
     password: str
 
-# 3. Definimos la estructura de la Transacción según el documento
+# Definimos la estructura de la Transacción según el documento
 class TransferRequest(BaseModel):
     session_token: str
     tx_id: str
@@ -53,7 +53,7 @@ def serve_frontend():
     
     return FileResponse(ruta_index)
 
-# 3. Endpoint de Inicio de Sesión
+# Endpoint de Inicio de Sesión
 @app.post("/api/v1/login")
 def login(request: LoginRequest):
     
@@ -69,7 +69,6 @@ def login(request: LoginRequest):
         if not user:
             raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 
-        # --- NUEVO (RS1): Verificar si la cuenta está bloqueada ---
         if user['lockout_until'] > current_time:
             remaining = user['lockout_until'] - current_time
             raise HTTPException(status_code=429, detail=f"Cuenta bloqueada. Reintente en {remaining} segundos.")
@@ -97,10 +96,10 @@ def login(request: LoginRequest):
         
         session_token = generate_mac_key().hex()
         
-        # 2. Generamos la clave secreta MAC exclusiva para esta sesión usando crypto.py
+        # Generamos la clave secreta MAC exclusiva para esta sesión usando crypto.py
         mac_key_hex = generate_mac_key().hex()
         
-        # 3. La sesión caduca en 1 hora (3600 segundos)
+        # La sesión caduca en 1 hora (3600 segundos)
         expires_at = current_time + 3600
 
         cursor.execute(
@@ -147,7 +146,7 @@ def register(request: RegisterRequest):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        # 1. Validar la política de contraseñas
+        # Validamos la política de contraseñas
         # Mínimo 8 caracteres, 1 letra, 1 número, 1 símbolo
         patron = r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*(),.?\":{}|<>])[A-Za-z\d!@#$%^&*(),.?\":{}|<>]{8,}$"
         
@@ -157,15 +156,15 @@ def register(request: RegisterRequest):
                 detail="La contraseña debe tener al menos 8 caracteres, incluir 1 letra, 1 número y 1 símbolo."
             )
 
-        # 2. Comprobar si el usuario ya existe (Evitar duplicados)
+        # Comprobar si el usuario ya existe (Evitar duplicados)
         cursor.execute("SELECT * FROM users WHERE username = ?", (request.username,))
         if cursor.fetchone():
             raise HTTPException(status_code=400, detail="El usuario ya existe. Elige otro nombre.")
 
-        # 3. Derivación robusta (Requisito RS1)
+        # Derivación robusta (Requisito RS1)
         key, salt = hash_password(request.password)
 
-        # 4. Guardar usuario en la base de datos
+        # Guardar usuario en la base de datos
         cursor.execute(
             "INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)",
             (request.username, key, salt)
@@ -178,9 +177,7 @@ def register(request: RegisterRequest):
 
 
 
-    # -----------------------------------------
-# ENDPOINT DE TRANSFERENCIA
-# -----------------------------------------
+
 @app.post("/api/v1/transfer")
 def transfer(request: TransferRequest):
     conn = get_db_connection()
@@ -188,25 +185,25 @@ def transfer(request: TransferRequest):
     current_time = int(time.time())
     
     try:
-        # 1. Comprobar si el Nonce ya existe en la base de datos (Evitar Replay)
+        # Comprobar si el Nonce ya existe en la base de datos (Evitar Replay)
         cursor.execute("SELECT * FROM nonces WHERE nonce = ?", (request.nonce,))
         if cursor.fetchone():
             raise HTTPException(status_code=403, detail="Nonce ya utilizado. Ataque Replay detectado.")
 
-        # 2. Buscamos la sesión del usuario
+        # Buscamos la sesión del usuario
         cursor.execute("SELECT * FROM sessions WHERE session_token = ?", (request.session_token,))
         session = cursor.fetchone()
         
         if not session or session['expires_at'] < current_time:
             raise HTTPException(status_code=401, detail="Sesión inválida o caducada")
             
-        # 3. Recuperamos la clave MAC secreta
+        # Recuperamos la clave MAC secreta
         mac_key = bytes.fromhex(session['mac_key'])
         
-        # 4. Concatenamos los datos añadiendo el NONCE al final
+        # Concatenamos los datos añadiendo el NONCE al final
         message = f"{request.tx_id}{request.origin_account}{request.destination_account}{request.amount}{request.currency}{request.timestamp}{request.nonce}"
         
-        # 5. Verificamos la firma MAC
+        # Verificamos la firma MAC
         is_valid_mac = verify_hmac_sha256(mac_key, message, request.mac)
         
         if not is_valid_mac:
@@ -215,7 +212,7 @@ def transfer(request: TransferRequest):
                 detail="Firma MAC inválida. La transacción ha sido alterada o no es auténtica."
             )
         
-        # 6. Guardar el Nonce usado en la base de datos para bloquear futuros reintentos
+        # Guardar el Nonce usado en la base de datos para bloquear futuros reintentos
         cursor.execute("INSERT INTO nonces (nonce, timestamp) VALUES (?, ?)", (request.nonce, current_time))
         conn.commit()
         
@@ -228,5 +225,4 @@ def transfer(request: TransferRequest):
         conn.close()
 
 if __name__ == "__main__":
-    # Arrancamos el servidor en el puerto 8080 (No seguro, como pide la Opción B)
     uvicorn.run(app, host="127.0.0.1", port=8080)
